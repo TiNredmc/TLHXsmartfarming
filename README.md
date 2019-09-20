@@ -7,7 +7,7 @@ All of source code, schematics are created / maintained by TinLethax
 
 # Aiming
 
-To create the working prototype of smart farming system that can be developed in athe future. We test with the Pea sprout or Pea seedling because it grows instantly. The hardware side We run the system on the popular NodeMCU ESP8266 development embeded board, By running in environment monitoring and wireless remote access through internet by using NETPIE as the server. On software side we coding on the Arduino platform because it easy and time saving.
+To create the working prototype of smart farming system that cost effective and can be developed in the future. We test with the Pea sprout or Pea seedling because it grows instantly. The hardware side We run the system on the popular NodeMCU ESP8266 development embeded board, By running in environment monitoring and wireless remote access through internet by using NETPIE as the server. On software side we coding on the Arduino platform because it easy and time saving.
 
 # Principle of "How we make it works ?"
 
