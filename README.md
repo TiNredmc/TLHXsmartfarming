@@ -1,4 +1,4 @@
-# Smart Pea Sporut Farm
+# Smart Pea Sprout Farm
 Grade 11 High school project. Creat the working prototype of the smart farming system using IoT based on ESP8266 NodeMCU Microcontroller and NETPIE server.
 
 # Notice >> School project. Maintained by TinLethax. 
