@@ -16,3 +16,7 @@ We use Microgear library to make the ESP8266 interfacing with the NETPIE server 
 # Current status of the project
 
 We are working on the project paper along with the first prototype On-Breadboard circuit.
+
+# Some simple flowchart
+
+![alt text](https://github.com/TiNredmc/TLHXsmartfarming/raw/master/smartfarmingflowchart.jpg)
