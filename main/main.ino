@@ -1,43 +1,76 @@
-//the microgear and network stuff
+/* By TinLethax */
+//the microgear (uGear for short, not official name) and network stuff
 
-#include <ESP8266WiFi.h>
-#include <MicroGear.h>
+#include <ESP8266WiFi.h>// include wifi stuff for the nodeMCU 
+#include <MicroGear.h>// include microgear library
 
-const char* ssid     = "";
-const char* password = "";
+const char* ssid     = "";// wifi
+const char* password = "";// wifi's password
 
-#define APPID   ""
-#define KEY     ""
-#define SECRET  ""
-#define ALIAS   "NodeMCU"
-#define FEEDID  "SmartFarmDemo"
-WiFiClient client;
+#define APPID   "" //app id of the project 
+#define KEY     "" // the key
+#define SECRET  "" //secret key for the project
+#define ALIAS   "" //alias of the client (In this case is nodeMCU)
+#define FEEDID  "" // feed id for the IoT feed 
+WiFiClient client; // use nodeMCU as wifi client
 
-char str[64];
+char str[64];// store the message
 int timer = 0;
-MicroGear microgear(client);
+MicroGear microgear(client);// use microgear as client
 
 //The libs for the ds18b20 and Inits of the temp-sensor.
-#include <OneWire.h>
-#include <DallasTemperature.h>
-#define ONE_WIRE_BUS 2 //pin D4 
+#include <OneWire.h>// include onewire library (Interfacing stuff)
+#include <DallasTemperature.h>// include the dallas DS18B20 library (commanding stuff)
+#define ONE_WIRE_BUS 14 //pin D5 
 OneWire oneWire(ONE_WIRE_BUS); //DS18B20 is on the D4 at NodeMCU
-DallasTemperature sensors(&oneWire);
-DeviceAddress insideThermometer;
+DallasTemperature sensors(&oneWire);// se the onewire bus pin
+DeviceAddress insideThermometer;// store the device address
 
+//General use GPIOs
+int pmrly = 2; //pump relay on GPIO2 or pin D4
 
-void onMsghandler(char *topic, uint8_t* msg, unsigned int msglen) {
-  Serial.print("Incoming message -->");
-  msg[msglen] = '\0';
-  Serial.println((char *)msg);
+// command interpreter
+String rcvdstring;   // string received from serial
+String cmdstring;   // command part of received string
+String  parmstring; // parameter part of received string
+int parmvalint;        // parameter value
+int sepIndex;       // index of seperator
+int humidThres ; // keep the minimum threshold from the server message
+int pumpDura ; // keep the pump duration from the server
+int humid ; // the variable for keeping the analog value of humidity sensor
+int prevHumid; // store the prvious humidThres
+
+void cmdInt(void)
+{
+  rcvdstring.trim();  // remove leading&trailing whitespace, if any
+  // find index of separator "="
+  sepIndex = rcvdstring.indexOf('=');
+
+  // extract command and parameter
+  cmdstring = rcvdstring.substring(0, sepIndex);
+  parmstring = rcvdstring.substring(sepIndex + 1);
+  if (cmdstring.equalsIgnoreCase("d"))   {
+    humidThres = parmstring.toInt();
+  }
+  else if (cmdstring.equalsIgnoreCase("h"))   {
+    pumpDura = parmstring.toInt();
+  }
 }
 
-void onConnected(char *attribute, uint8_t* msg, unsigned int msglen) {
+void onMsghandler(char *topic, uint8_t* msg, unsigned int msglen) {// message handler of the uGear. Do something if message arrives
+  char *m = (char *)msg;
+  m[msglen] = '\0';
+  rcvdstring = m;
+  Serial.println(rcvdstring);
+  cmdInt();// extract the data from server's message 
+}
+
+void onConnected(char *attribute, uint8_t* msg, unsigned int msglen) {//lets uGear known the alias for showing up on the sever
   Serial.println("Connected to NETPIE...");
   microgear.setAlias(ALIAS);
 }
 
-void printAddress (DeviceAddress deviceAddress)
+void printAddress (DeviceAddress deviceAddress)// print device address of the DS18B20
 {
   for (uint8_t i = 0; i < 8; i++)
   {
@@ -47,13 +80,18 @@ void printAddress (DeviceAddress deviceAddress)
 }
 
 void setup() {
+  pinMode(pmrly, OUTPUT);// set D2 as output for controlling pump relay
+  microgear.on(MESSAGE, onMsghandler);// setup the message handler
+  microgear.on(CONNECTED, onConnected);// shout out "connected" to serial
 
-  microgear.on(MESSAGE, onMsghandler);
-  microgear.on(CONNECTED, onConnected);
-
-  Serial.begin(115200);
+  Serial.begin(115200);// set serial baud rate to 115200
   Serial.println("Starting...");
-  sensors.begin();
+  sensors.begin();// initialize the sensor
+  Serial.print("Found ");
+  Serial.print(sensors.getDeviceCount(), DEC);
+  sensors.isParasitePowerMode();
+  Serial.println();
+  if (!sensors.getAddress(insideThermometer, 0)) Serial.println("Unable to find address for Device 0");
   Serial.println();
   Serial.print("DallasTempID:");
   printAddress(insideThermometer);
@@ -74,18 +112,34 @@ void setup() {
   microgear.init(KEY, SECRET, ALIAS);
   microgear.connect(APPID);
 }
-int humid ;
-float temp;
+
+
+void pumpctrl() {
+  Serial.println(humidThres);
+  Serial.println(pumpDura);
+//if (humidThres != prevHumid){// if the dat updated 
+    if (humid <= humidThres) {// if the real humidity match the threshold 
+      digitalWrite(pmrly, HIGH);//turn on pump
+      Serial.println("PUMP ON ");// telling us in serial that the pump on ! 
+      delay(pumpDura);// for "pumpDura" second 
+      digitalWrite(pmrly, LOW);// then stop the pump
+    }
+   // prevHumid = humid;// ensure that it wont do again if we update the threshold.
+ //}
+}
+
 void loop() {
   if (microgear.connected()) {
     Serial.println("connected");
     microgear.loop();
 
     if (timer >= 1000) {
-      sensors.requestTemperatures();
-      temp = sensors.getTempC(insideThermometer);
-      humid = analogRead(A0);
-      humid = map(humid, 100, 800, 100, 0);// analog value = 0 mean super wet 100% humid. 
+      sensors.requestTemperatures();// request temperature from sensor usin 1wire 
+      delay(20);//delay for .02 s
+      float temp = sensors.getTempC(insideThermometer);//read the temperature and put to "temp"
+      humid = analogRead(A0);// read analog value from A0 and pu the vaue to "humid"
+      humid = map(humid, 100, 800, 100, 0);// analog value = 0 mean super wet 100% humid.
+      pumpctrl();// get into pump control for a bit 
       sprintf(str, "%d,%f", humid, temp);
       Serial.print("Temp C: ");
       Serial.print(temp);
@@ -101,7 +155,7 @@ void loop() {
       data += temp ;
       data += "}";
       microgear.writeFeed(FEEDID, data);
-      
+
 
       timer = 0;
     }
