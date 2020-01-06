@@ -81,6 +81,7 @@ void printAddress (DeviceAddress deviceAddress)// print device address of the DS
 
 void setup() {
   pinMode(pmrly, OUTPUT);// set D2 as output for controlling pump relay
+  digitalWrite(pmrly, HIGH);// pull high because the relay is active high
   microgear.on(MESSAGE, onMsghandler);// setup the message handler
   microgear.on(CONNECTED, onConnected);// shout out "connected" to serial
 
@@ -119,10 +120,10 @@ void pumpctrl() {
   Serial.println(pumpDura);
 //if (humidThres != prevHumid){// if the dat updated 
     if (humid <= humidThres) {// if the real humidity match the threshold 
-      digitalWrite(pmrly, HIGH);//turn on pump
+      digitalWrite(pmrly, LOW);//turn on pump
       Serial.println("PUMP ON ");// telling us in serial that the pump on ! 
       delay(pumpDura);// for "pumpDura" second 
-      digitalWrite(pmrly, LOW);// then stop the pump
+      digitalWrite(pmrly, HIGH);// then stop the pump
     }
    // prevHumid = humid;// ensure that it wont do again if we update the threshold.
  //}
